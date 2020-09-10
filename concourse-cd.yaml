@@ -1,0 +1,42 @@
+resources:
+  - name: front-git
+    type: git
+    icon: gitlab
+    source:
+      uri: git@gitlab.com:blackrockllc/front.git
+      private_key: ((gitlab.private-key))
+  - name: front-registry
+    type: registry-image
+    icon: docker
+    check_every: 24h
+    source:
+      repository: core.harbor.cloud.uf-ace.com/blackrockllc/front
+      username: ((harbor.front-username))
+      password: ((harbor.front-password))
+
+jobs:
+  - name: build-image
+    plan:
+      - get: front-git
+        trigger: true
+      - task: build
+        privileged: true
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: vito/oci-build-task
+              tag: latest
+          inputs:
+            - name: front-git
+              path: .
+          outputs:
+            - name: front-image
+              path: image
+          run:
+            path: build
+      - put: front-registry
+        params:
+          image: front-image/image.tar
+          additional_tags: front-git/.git/ref
